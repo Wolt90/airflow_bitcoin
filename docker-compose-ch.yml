@@ -1,0 +1,37 @@
+# https://ivan-shamaev.ru/how-to-write-data-to-clickhouse-using-python/
+# https://dev.to/titronium/clickhouse-server-in-1-minute-with-docker-4gf2
+
+
+version: '3'
+
+services:
+  ch_server:
+    image: yandex/clickhouse-server
+    # env_file:
+    #   - #${PWD}/.env
+    environment:
+      CLICKHOUSE_USER: ${DB_USER}
+      CLICKHOUSE_PASSWORD: ${DB_PASSWORD}
+      CLICKHOUSE_DB: ${DB}
+    ports:
+      - "8123:8123"
+    volumes:
+      - ./databases/ch:/var/lib/clickhouse
+    networks:
+        - ch_ntw
+
+  ch_client:
+    image: yandex/clickhouse-client
+    entrypoint:
+      - /bin/sleep
+    command:
+      - infinity
+    networks:
+        - ch_ntw
+
+networks:
+  ch_ntw:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.222.1.0/24
