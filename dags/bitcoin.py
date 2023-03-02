@@ -1,14 +1,10 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-# from airflow.variable
-from datetime import datetime, timedelta, timezone
-# from bitcoin import bitcoin
+from datetime import datetime, timedelta
 
+# добавить external date в бд, прокинуть через переменные окружения
 
-# def execute(self, context):
-#     execution_date = context.get("execution_date")
-
-def bitcoin():
+def bitcoin(logical_date):
   import pandas as pd
   import requests
   import json
@@ -21,12 +17,12 @@ def bitcoin():
   content = r.content.decode('UTF-8')
   data0=json.loads(content)
   df = pd.json_normalize(data0['data'])
-  df["datetime"] = pd.to_datetime(data0['timestamp'],unit='ms') #+ timedelta(hours=3)
-  df["logical_date"] = '123'  #"{{ ds }}" #datetime.now() #{{ ds }}
+  df["datetime"] = pd.to_datetime(data0['timestamp'],unit='ms') + timedelta(hours=3)
+  df["logical_date"] = logical_date + timedelta(hours=3) 
   print(df)
   #    запись в бд sql
   # подключение для передачи данных в mssql 
-  server = 'host.docker.internal:54321'   #localhost из контейнера
+  server = 'host.docker.internal:54321'   #localhost из контейнера https://stackoverflow.com/questions/69596430/airflow-with-docker-connect-to-a-local-host-postgresql 
   # server = 'c-c9q5ps4cduajbmmuvvnk.rw.mdb.yandexcloud.net:6432'
   database = 'analytics'
   username = 'admin123' 
@@ -39,7 +35,7 @@ def bitcoin():
   # engine = create_engine('clickhouse://'+username+':'+password+'@'+server+'/'+database) 
   #    получение заголовков столбцов и преобразование данных в правильный формат для записи в бд
   columns=list(df)
-  values=[sqlalchemy.types.VARCHAR(length=50),sqlalchemy.types.VARCHAR(length=3),sqlalchemy.types.VARCHAR(length=10),sqlalchemy.types.VARCHAR(length=10),sqlalchemy.types.Numeric(30,16), sqlalchemy.types.DateTime(), sqlalchemy.types.VARCHAR(length=50)]   
+  values=[sqlalchemy.types.VARCHAR(length=50),sqlalchemy.types.VARCHAR(length=3),sqlalchemy.types.VARCHAR(length=10),sqlalchemy.types.VARCHAR(length=10),sqlalchemy.types.Numeric(30,16), sqlalchemy.types.DateTime(), sqlalchemy.types.DateTime()]   
   columns_values=dict(zip(columns,values))
 
   df.to_sql(name='bitcoin', con=engine, if_exists='append', index=False, dtype = columns_values) 
@@ -59,21 +55,17 @@ default_args = {
 # 'priority_weight': 10,
 # 'end_date': datetime(2016, 1, 1),
 }
-# def python_method(ds, **kwargs):
-#     Variable.set('execution_date', kwargs['execution_date'])
-#     return
+
+# def execute(self, context):
+#     execution_date = context.get("execution_date")
+def logical_date_func(**context):
+  logical_date = context["dag_run"].conf["logical_date"] 
 
 dag = DAG(  'bitcoin',
         schedule_interval=timedelta(minutes=30) ,
         default_args=default_args
     )
 
-# t1 = PythonOperator(
-#     task_id='execution_date',
-#     provide_context=True,
-#     python_callable=python_method,
-#     dag=dag)
-# date = "{{ ds }}"    #"{{ ds }}"
 t2 = PythonOperator(
     task_id='bitcoin',
     python_callable=bitcoin,
