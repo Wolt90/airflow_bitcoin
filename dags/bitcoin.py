@@ -26,8 +26,8 @@ def bitcoin():
   print(df)
   #    запись в бд sql
   # подключение для передачи данных в mssql 
-  # server = 'localhost:54321'
-  server = 'c-c9q5ps4cduajbmmuvvnk.rw.mdb.yandexcloud.net:6432'
+  server = 'host.docker.internal:54321'   #localhost из контейнера
+  # server = 'c-c9q5ps4cduajbmmuvvnk.rw.mdb.yandexcloud.net:6432'
   database = 'analytics'
   username = 'admin123' 
   password = 'admin123'
@@ -47,7 +47,7 @@ def bitcoin():
 default_args = {
   'owner': 'airflow',
   'depends_on_past': False,
-  'start_date': datetime(2023, 2, 28) - timedelta(hours=3), # чтобы выполнял с 00:00:00 именно нашего часового пояса
+  'start_date': datetime(2023, 3, 2) - timedelta(hours=3), # чтобы выполнял с 00:00:00 именно нашего часового пояса
   'email': ['gleb90@list.ru'],
   'email_on_failure': False,
   'email_on_retry': False,
