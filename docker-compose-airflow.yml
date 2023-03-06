@@ -230,6 +230,8 @@ services:
         mkdir -p /sources/logs /sources/dags /sources/plugins
         chown -R "${AIRFLOW_UID}:0" /sources/{logs,dags,plugins}
         exec /entrypoint airflow version
+      # - export $(xargs < .env)
+      # - echo ${DB} 
     # yamllint enable rule:line-length
     environment:
       <<: *airflow-common-env
@@ -238,6 +240,9 @@ services:
       _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
       _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
       _PIP_ADDITIONAL_REQUIREMENTS: ''
+      # DB: ${DB}
+      # DB_USER_USER: ${DB_USER}
+      # DB_PASSWORD: ${DB_PASSWORD}
     user: "0:0"
     volumes:
       - ${AIRFLOW_PROJ_DIR:-.}:/sources

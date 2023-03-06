@@ -1,10 +1,28 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+# from airflow.operators.bash import BashOperator
 from datetime import datetime, timedelta
+from airflow.hooks.base import BaseHook
 
-# добавить external date в бд, прокинуть через переменные окружения
+conn = BaseHook.get_connection(conn_id='pg')
+DB_HOST = conn.host+':'+str(conn.port)
+DB_USER = conn.login
+DB_PASSWORD = conn.password
 
-def bitcoin(logical_date):
+# прокинуть через переменные окружения
+
+# def get_secrets(**kwargs):
+#   conn = BaseHook.get_connection(kwargs['my_conn_id'])  # URI: {conn.get_uri()}
+#   DB_HOST = conn.host
+#   DB_USER = conn.login
+#   DB_PASSWORD = conn.password
+
+# def execute(self, context):
+#     execution_date = context.get("execution_date")
+def logical_date_func(**context): # получаем из выполнения дату выполнения
+  logical_date = context["dag_run"].conf["logical_date"] 
+
+def bitcoin(logical_date):#, DB_HOST, DB_USER, DB_PASSWORD): # основной скрипт
   import pandas as pd
   import requests
   import json
@@ -24,10 +42,14 @@ def bitcoin(logical_date):
   # подключение для передачи данных в mssql 
   server = 'host.docker.internal:54321'   #localhost из контейнера https://stackoverflow.com/questions/69596430/airflow-with-docker-connect-to-a-local-host-postgresql 
   # server = 'c-c9q5ps4cduajbmmuvvnk.rw.mdb.yandexcloud.net:6432'
+  # database = 'analytics'
+  # username = 'admin123' 
+  # password = 'admin123'
+  server = DB_HOST
   database = 'analytics'
-  username = 'admin123' 
-  password = 'admin123'
-  # database = os.environ.get('DB') 
+  username = DB_USER 
+  password = DB_PASSWORD
+  # database = os.environ.get('DB')  #"{{ var.value.get('DB') }}"  #os.environ.get('POSTGRES_DB') 
   # username = os.environ.get('DB_USER') 
   # password = os.environ.get('DB_PASSWORD') 
   #открытие соединения для записи в бд sql
@@ -43,32 +65,30 @@ def bitcoin(logical_date):
 default_args = {
   'owner': 'airflow',
   'depends_on_past': False,
-  'start_date': datetime(2023, 3, 2) - timedelta(hours=3), # чтобы выполнял с 00:00:00 именно нашего часового пояса
+  'start_date': datetime(2023, 3, 6) - timedelta(hours=3), # чтобы выполнял с 00:00:00 именно нашего часового пояса
   'email': ['gleb90@list.ru'],
   'email_on_failure': False,
   'email_on_retry': False,
   'retries': 1,
   'retry_delay': timedelta(minutes=1),
-  'catchup':True,
-# 'queue': 'bash_queue',
-# 'pool': 'backfill',
-# 'priority_weight': 10,
-# 'end_date': datetime(2016, 1, 1),
+  'catchup':True
 }
 
-# def execute(self, context):
-#     execution_date = context.get("execution_date")
-def logical_date_func(**context):
-  logical_date = context["dag_run"].conf["logical_date"] 
-
 dag = DAG(  'bitcoin',
-        schedule_interval=timedelta(minutes=30) ,
-        default_args=default_args
+        schedule_interval=timedelta(minutes=30),
+        default_args=default_args,
+        tags=['GlebT','API' ],
     )
 
+# t1 = BashOperator(
+#     task_id="bash_use_variable_good",
+#     bash_command="echo variable DB=${DB}",
+#     env={"DB": "{{ var.value.get('DB') }}"},
+# )
 t2 = PythonOperator(
     task_id='bitcoin',
     python_callable=bitcoin,
+    # op_kwargs={conn.host:'DB_HOST', 'DB_USER':'DB_USER', 'DB_PASSWORD':'DB_PASSWORD'},
     dag=dag)
 
 # t1 >> t2
